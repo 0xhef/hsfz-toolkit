@@ -34,7 +34,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": ["nsis", "msi", "dmg", "app", "appimage", "deb"],
     "publisher": "BMSecResearch",
     "copyright": "BMSecResearch",
     "category": "DeveloperTool",
