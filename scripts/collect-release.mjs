@@ -162,42 +162,50 @@ const plans = [
   // ── Windows (when built from the Windows side) ────────────────
   {
     name: `BMSecResearch-${version}-windows-x64.msi`,
-    candidates: globLike(
-      'src-tauri/target/release/bundle/msi',
-      (f) => f.endsWith('.msi'),
-    ),
+    candidates: bundleGlob('msi', (f) => f.endsWith('.msi')),
   },
   {
     name: `BMSecResearch-${version}-windows-x64-setup.exe`,
-    candidates: globLike(
-      'src-tauri/target/release/bundle/nsis',
-      (f) => f.endsWith('-setup.exe'),
-    ),
+    candidates: bundleGlob('nsis', (f) => f.endsWith('-setup.exe')),
   },
   // ── macOS ─────────────────────────────────────────────────────
   {
     name: `BMSecResearch-${version}-macos.dmg`,
-    candidates: globLike(
-      'src-tauri/target/release/bundle/dmg',
-      (f) => f.endsWith('.dmg'),
-    ),
+    candidates: bundleGlob('dmg', (f) => f.endsWith('.dmg')),
   },
   // ── Linux ─────────────────────────────────────────────────────
   {
     name: `BMSecResearch-${version}-linux-x86_64.AppImage`,
-    candidates: globLike(
-      'src-tauri/target/release/bundle/appimage',
-      (f) => f.endsWith('.AppImage'),
-    ),
+    candidates: bundleGlob('appimage', (f) => f.endsWith('.AppImage')),
   },
   {
     name: `BMSecResearch-${version}-linux-amd64.deb`,
-    candidates: globLike(
-      'src-tauri/target/release/bundle/deb',
-      (f) => f.endsWith('.deb'),
-    ),
+    candidates: bundleGlob('deb', (f) => f.endsWith('.deb')),
   },
 ];
+
+/**
+ * Tauri places bundles under either:
+ *   src-tauri/target/release/bundle/<kind>/                      (no --target)
+ *   src-tauri/target/<triple>/release/bundle/<kind>/             (with --target)
+ * The CI release workflow always passes --target, so we have to probe
+ * every target-triple subdirectory in addition to the bare path.
+ */
+function bundleGlob(kind, pred) {
+  const roots = ['src-tauri/target/release/bundle'];
+  const targetDir = join(repoRoot, 'src-tauri/target');
+  if (existsSync(targetDir)) {
+    for (const entry of readdirSync(targetDir)) {
+      const candidate = join('src-tauri/target', entry, 'release/bundle');
+      if (existsSync(join(repoRoot, candidate))) roots.push(candidate);
+    }
+  }
+  const out = [];
+  for (const root of roots) {
+    out.push(...globLike(`${root}/${kind}`, pred));
+  }
+  return out;
+}
 
 /** List files in a directory under `repoRoot` matching a predicate. */
 function globLike(relDir, pred) {
