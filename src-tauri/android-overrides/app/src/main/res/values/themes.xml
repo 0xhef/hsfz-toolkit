@@ -1,0 +1,23 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!--
+      Base application theme.
+
+      `android:windowBackground` is set to @drawable/splash so the
+      Activity window shows our branded splash immediately on launch,
+      covering the cold-start delay while the Tauri WebView spins up
+      and parses the JS bundle. Once the WebView draws its first
+      frame, that frame covers the splash drawable automatically —
+      no explicit dismissal logic needed.
+
+      Status bar and nav bar are tinted to the brand colour so the
+      system chrome blends into the splash with no hard edge while
+      the app is loading.
+    -->
+    <style name="Theme.bmsecresearch" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash</item>
+        <item name="android:statusBarColor">@color/ic_launcher_background</item>
+        <item name="android:navigationBarColor">@color/ic_launcher_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

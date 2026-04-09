@@ -1,0 +1,59 @@
+{
+  "productName": "BMSecResearch",
+  "version": "1.0.0",
+  "identifier": "org.bmsecresearch.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:4001",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "BMSecResearch",
+        "width": 1280,
+        "height": 720,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "decorations": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost",
+        "img-src": "'self' asset: http://asset.localhost blob: data:",
+        "style-src": "'unsafe-inline' 'self'"
+      }
+    },
+    "withGlobalTauri": false
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "BMSecResearch",
+    "copyright": "BMSecResearch",
+    "category": "DeveloperTool",
+    "shortDescription": "Independent security research toolkit for HSFZ/UDS diagnostic protocols.",
+    "longDescription": "BMSecResearch is an independent, open-source security research toolkit for the BMW diagnostic protocol stack (HSFZ over TCP/UDP, UDS per ISO 14229). Five integrated workflows: reverse-engineer captured flash sessions by extracting the underlying .bin payload from a Wireshark pcap; sniff a live HSFZ flash on a network interface and recover the image frame-by-frame; perform a bounded read of the MEVD17 unprotected calibration region (read-only, scope-enforced at compile time and runtime); stand up a stateful DME simulator that impersonates an MEVD17 ECU so diagnostic and flashing tools can be analyzed against a benign target instead of real hardware; and run an HSFZ man-in-the-middle proxy between a tester and a real or simulated DME for protocol research, including VIN-handling research. Every session is persisted to disk with timestamps and can be exported as a Wireshark-ready .pcap. Authorized security research and educational use on vehicles you own — see SCOPE.md and DISCLAIMER.md. Not affiliated with, endorsed by, or sponsored by BMW AG or BMW Group.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "displayLanguageSelector": false,
+        "languages": ["English"]
+      }
+    }
+  },
+  "plugins": {}
+}

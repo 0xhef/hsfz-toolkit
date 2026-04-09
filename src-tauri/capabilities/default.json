@@ -1,0 +1,22 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for BMSecResearch — grants the dialog plugin (file picker), the process plugin (relaunch / exit), and the fs plugin with permissive read/write so the frontend can route file I/O through plugin-fs. plugin-fs handles Android Storage Access Framework content URIs transparently, which std::fs cannot — see the file-I/O architecture in src-tauri/src/calibration_read/mod.rs.",
+  "windows": ["main"],
+  "platforms": ["linux", "macOS", "windows", "android", "iOS"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "process:default",
+    "fs:default",
+    "fs:allow-write-file",
+    "fs:allow-read-file",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "**" }
+      ]
+    }
+  ]
+}

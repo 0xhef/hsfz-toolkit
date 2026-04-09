@@ -1,0 +1,5 @@
+[env]
+# Npcap SDK path for Windows builds (required for the pcap crate)
+# Download from: https://npcap.com/#download
+# Linux/macOS: install libpcap-dev instead
+LIB = { value = "C:/npcap-sdk/Lib/x64", force = false }

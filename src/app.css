@@ -1,0 +1,443 @@
+@import 'tailwindcss';
+
+/* ────────────────────────────────────────────────────────────────────
+   BMSecResearch — design tokens
+   ─────────────────────────────────────────────────────────────────────
+   Aesthetic direction: industrial diagnostic terminal. Deep matte
+   black base, hairline structure, monospace data fields, amber
+   dashboard-warning accent. Precise, dense, no ornamentation that
+   doesn't earn its space.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Fonts are intentionally NOT loaded from Google Fonts.
+   Reasons:
+     1. Mobile WebView startup: a blocking @import url() from a CDN
+        adds a multi-hundred-millisecond network fetch to first paint
+        on a cold launch, manifesting as a brief UI freeze on Android.
+     2. Offline-first: this app connects to vehicles on direct-link
+        networks that routinely have no internet access, so CDN
+        assets would fail silently and leave us on whatever default
+        font the WebView had cached.
+     3. Privacy: no outbound requests on launch.
+   The `font-family` stacks below fall back to platform system fonts
+   (JetBrains Mono / Berkeley Mono / Menlo / Consolas for monospace,
+   Inter / system UI for sans). Every modern desktop and mobile OS
+   ships a solid monospace face that matches the industrial look
+   closely enough. */
+
+:root {
+  /* ── Surfaces ────────────────────────────────────────────────── */
+  --bg-primary: #07080a;
+  --bg-secondary: #0f1116;
+  --bg-tertiary: #161a21;
+  --bg-elevated: #1a1f28;
+  --bg-overlay: rgba(7, 8, 10, 0.85);
+
+  /* ── Text ────────────────────────────────────────────────────── */
+  --text-primary: #e8eaed;
+  --text-secondary: #8b919b;
+  --text-muted: #4f545d;
+  --text-inverse: #07080a;
+
+  /* ── Lines ───────────────────────────────────────────────────── */
+  --border: #1f242c;
+  --border-strong: #2c323c;
+  --border-hairline: rgba(232, 234, 237, 0.06);
+
+  /* ── Accent (amber dashboard-warning-light tone) ───────────── */
+  --accent: #ff8c1a;
+  --accent-hover: #ffa340;
+  --accent-soft: rgba(255, 140, 26, 0.12);
+  --accent-glow: rgba(255, 140, 26, 0.32);
+
+  /* ── State colours ───────────────────────────────────────────── */
+  --success: #5ec27a;
+  --success-soft: rgba(94, 194, 122, 0.12);
+  --warning: #ffc94c;
+  --error: #ff4d4d;
+  --error-soft: rgba(255, 77, 77, 0.12);
+  --info: #4cc2ff;
+  --info-soft: rgba(76, 194, 255, 0.12);
+
+  /* ── Typography ──────────────────────────────────────────────── */
+  --font-display: ui-monospace, 'JetBrains Mono', 'Berkeley Mono', 'SF Mono',
+    Menlo, Consolas, monospace;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas,
+    monospace;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    sans-serif;
+
+  /* ── Geometry ────────────────────────────────────────────────── */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.02) inset,
+    0 16px 40px -24px rgba(0, 0, 0, 0.6);
+  --shadow-elevated: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+    0 24px 64px -32px rgba(0, 0, 0, 0.8);
+}
+
+/* Tailwind v4 theme bridge so utility classes pick up the same tokens. */
+@theme {
+  --color-accent: #ff8c1a;
+  --color-accent-hover: #ffa340;
+  --color-success: #5ec27a;
+  --color-error: #ff4d4d;
+  --color-info: #4cc2ff;
+  --color-bg-primary: #07080a;
+  --color-bg-secondary: #0f1116;
+  --color-bg-tertiary: #161a21;
+  --color-text-primary: #e8eaed;
+  --color-text-secondary: #8b919b;
+  --color-border: #1f242c;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Mobile app shell layout — body is the single scroll container.
+   The mobile shell uses a normal-flow structure:
+     - <header> uses `position: sticky; top: 0` so it stays pinned at
+       the top of the viewport while content scrolls beneath it
+     - <main> is normal flow with `padding-bottom` equal to the bottom
+       nav height + safe area so the last content clears the nav
+     - <nav> (bottom nav) uses `position: fixed; bottom: 0` so it
+       stays pinned at the bottom of the viewport regardless of scroll
+     - modals and toasts use `position: fixed` which is relative to
+       the viewport (body is the initial containing block) and behaves
+       correctly on Android WebView because body has no transform,
+       filter, or `overflow` that would trap fixed descendants
+   `overscroll-behavior: none` reduces rubber-band bounce when pulling
+   past the top/bottom of the document. */
+body {
+  overscroll-behavior-y: none;
+  /* min-height so the body sizes to the viewport on empty content.
+     `100dvh` is the dynamic viewport height that accounts for the
+     Android browser chrome shrinking/growing as the user scrolls. */
+  min-height: 100dvh;
+}
+
+/* Disable the Android WebView double-tap-zoom everywhere, not just
+   on buttons. Labels, headings, and list rows were occasionally
+   triggering an accidental zoom when a user tapped twice to quickly
+   interact with the same element. */
+html {
+  touch-action: manipulation;
+}
+
+/* Nested scroll containers (hex dumps, log panes, modal bodies)
+   must contain their overscroll so pull-past-the-edge doesn't
+   bounce the parent scroller. `body` already has `none`; `contain`
+   here stops momentum from propagating up while still allowing
+   normal scroll within the container. */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+[role='dialog'] > div {
+  overscroll-behavior: contain;
+}
+
+body {
+  background: var(--bg-primary);
+  /* Dual-layer atmosphere: subtle radial vignette + hairline grid.
+     The grid is barely visible but gives the surface a measured,
+     instrument-panel feel — never distracting, always present. */
+  background-image:
+    radial-gradient(
+      ellipse 1200px 800px at 50% 0%,
+      rgba(255, 140, 26, 0.04),
+      transparent 60%
+    ),
+    linear-gradient(rgba(232, 234, 237, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 234, 237, 0.018) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    32px 32px,
+    32px 32px;
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings:
+    'cv11' on,
+    'ss01' on,
+    'ss03' on;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+/* Utility: small-caps technical label */
+.label-sm {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Utility: thin top hairline accent for section headers */
+.rule-accent {
+  position: relative;
+}
+.rule-accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 1px;
+  width: 32px;
+  background: var(--accent);
+}
+
+/* Form controls — make native inputs match the theme without per-input
+   styling everywhere. Each Svelte component still has its own classes
+   for layout, but the base appearance + caret color come from here. */
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+input,
+select,
+textarea {
+  caret-color: var(--accent);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Scrollbar — slim, dark, accent on hover. Webkit only; falls back
+   to native on Firefox which already looks fine on dark backgrounds. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 10px;
+  border: 2px solid var(--bg-primary);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Subtle scan-line keyframe used by the accent indicator dot */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+/* Indeterminate progress bar — accent-coloured strip slides
+   left-to-right inside its parent. Used by the clone-from-car flow
+   while waiting for the first DID-progress event from the backend. */
+@keyframes indeterminate-slide {
+  0% {
+    left: -33%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   MOBILE / TOUCH SUPPORT
+   ─────────────────────────────────────────────────────────────────────
+   The Android variant runs the same Svelte UI but inside a different
+   shell (`MobileShell.svelte`) with a bottom navigation bar. These
+   rules tighten the desktop UI's defaults so the panels render well
+   on a phone-sized viewport without per-component edits.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Safe-area insets for notches, punch-holes, and rounded corners.
+   Exposed as CSS custom properties so any layout can opt in by
+   reading `var(--safe-area-top)` etc. */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+}
+
+/* Tap-highlight removal — Android WebView's default blue flash on
+   tap is jarring against the dark theme. We replace it with an
+   explicit :active press effect (below) so users still get tactile
+   feedback when they tap. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Universal button press feedback. Every <button> and [role="button"]
+   gets a subtle scale + opacity pulse on tap/click so the user has
+   immediate visual confirmation that their input was received, even
+   before the action actually fires. Applies on all platforms; desktop
+   users barely notice it (hover states dominate), mobile users need
+   it because there's no hover and the default tap-highlight is
+   disabled.
+
+   `touch-action: manipulation` tells the browser to skip the 300ms
+   tap-delay wait for double-tap zoom. Our buttons don't need zoom
+   and the delay makes taps feel laggy on Android WebView. */
+button,
+[role='button'] {
+  touch-action: manipulation;
+  transition:
+    transform 0.08s ease-out,
+    opacity 0.08s ease-out,
+    background-color 0.12s ease-out,
+    border-color 0.12s ease-out;
+}
+button:not(:disabled):active,
+[role='button']:not([aria-disabled='true']):active {
+  transform: scale(0.96);
+  opacity: 0.8;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Disable text selection on UI chrome by default — selection should
+   be intentional, not accidental from a long-press. Components that
+   need selection (hex dumps, log lines) re-enable it. */
+button,
+nav,
+header,
+footer,
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Mobile-only adjustments. Triggered below the Tailwind `sm`
+   breakpoint (640px) which catches every phone in portrait. */
+@media (max-width: 640px) {
+  /* Bump the smallest text up one notch — `text-[10px]` and
+     `text-[11px]` from the desktop layout become unreadable on a
+     phone screen. The desktop layout uses these for instrument-cluster
+     density that doesn't translate to touch. */
+  body {
+    font-size: 14px;
+  }
+
+  /* Touch targets — at least 44px (Apple HIG) / 48dp (Material) for
+     anything tappable. Applied to bare button elements; components
+     that already have explicit `py-3+` padding override this. */
+  button {
+    min-height: 44px;
+  }
+
+  /* Inputs slightly larger so the on-screen keyboard doesn't make
+     them feel cramped. */
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* prevents iOS auto-zoom on focus */
+    min-height: 40px;
+  }
+
+  /* Hex dumps and other monospace data displays should wrap on byte
+     boundaries instead of forcing horizontal scroll on a narrow
+     viewport. Components opt in by adding `class="hex-wrap"`. */
+  .hex-wrap {
+    word-break: break-all;
+    white-space: pre-wrap;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  /* Slimmer scrollbars on mobile — the desktop 10px ones are too wide
+     and don't match touch scroll conventions anyway. */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  /* Tighten card padding on mobile. The desktop layout uses `p-6`
+     (24px) and `p-5` (20px) liberally, which combined with the
+     mobile shell's 16px outer padding eats too much horizontal
+     screen on a phone-sized viewport. These rules shrink card
+     padding down to `p-4` (16px) on mobile only — desktop is
+     unaffected because the @media query bounds them. */
+  .p-6 {
+    padding: 1rem !important;
+  }
+  .p-5 {
+    padding: 0.875rem !important;
+  }
+  .px-8 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  .py-8 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  /* Card grids that use `grid-cols-2` collapse to single column on
+     phones. Tailwind's `sm:grid-cols-2` already does this for
+     classes that include the breakpoint, but plain `grid-cols-2`
+     needs an override. */
+  .grid-cols-2:not(.keep-cols) {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Modal containers — give them a max height so long content
+     scrolls inside the modal instead of overflowing the viewport. */
+  [role='dialog'] > div {
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+}
+
+/* Legacy mobile shell layout helpers (`mobile-safe-top`, `mobile-safe-bottom`,
+   `mobile-content-pad`, `momentum-scroll`) were removed when the mobile
+   shell switched to body-scrolling with sticky header + fixed bottom nav.
+   The sticky/fixed elements apply their safe-area-inset padding inline
+   via `style="..."` so no class-based helpers are needed. See
+   `src/lib/components/mobile/MobileShell.svelte` for the current layout. */

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover lets the WebView extend under the status bar
+         and gesture nav on Android, so safe-area-inset env() values
+         work correctly. user-scalable=no prevents pinch-zoom on the
+         UI chrome (this is an app, not a document) but the browser
+         still honors accessibility text-size settings. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <!-- Tell mobile browsers and the Android system shell that this
+         is a dark-themed app — picks the right system colours for
+         the status bar text and any browser chrome. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#07080a" />
+    <title>BMSecResearch</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

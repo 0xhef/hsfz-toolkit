@@ -1,0 +1,94 @@
+# ─── Build artifacts ───────────────────────────────────────────────────
+# Rust target directory — every Cargo build produces hundreds of MiB here.
+src-tauri/target/
+# Svelte / Vite compiled bundle.
+dist/
+# Tauri dev-tools scratch.
+src-tauri/gen/
+
+# ─── Package managers ──────────────────────────────────────────────────
+node_modules/
+# Legacy npm lockfile (we use bun).
+package-lock.json
+# Legacy pnpm lockfile (we use bun).
+pnpm-lock.yaml
+# Yarn artefacts.
+yarn.lock
+.pnp.*
+.yarn/
+
+# Bun keeps its cache here.
+.bun/
+
+# ─── Final release artifacts (built locally, attached to GitHub Releases) ──
+# The release/ folder is NOT committed — it gets populated by
+# build-windows.ps1 with the installer + portable exe right before you
+# upload them to a GitHub Release. Keep source out of the repo.
+release/
+
+# ─── Local captures + user research data (never commit real car data) ──
+# The app writes session captures under %LOCALAPPDATA% on Windows, but
+# devs sometimes copy sample captures into the repo for offline testing —
+# this guard catches those.
+captures/
+proxy_captures/
+*.pcap
+*.pcapng
+*.ncd
+# Extracted flash dumps.
+*.bin
+# Exception: ship the tiny fixture pcaps under tests/fixtures/ if we ever
+# add synthetic test vectors (not real car data).
+!tests/fixtures/*.pcap
+!tests/fixtures/*.bin
+
+# Simulator profile JSONs keyed to real VINs.
+profiles/
+simulator/profiles/
+cloned_*.json
+*_wba*.json
+*_WBA*.json
+
+# ─── Logs ──────────────────────────────────────────────────────────────
+*.log
+logs/
+BMSecResearch.log
+
+# ─── Secrets + env ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# ─── Android signing ───────────────────────────────────────────────────
+# Persistent signing keystore used by scripts/collect-release.mjs to
+# sign the release APK so it's sideloadable. Generated on first run;
+# must never be committed — losing it is fine for a fresh install but
+# means Android treats a later build as a different app.
+.android/
+
+# ─── IDE / editor scratch ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Agent / tool internal state ───────────────────────────────────────
+# Claude Code keeps per-project memory and permission state here. This
+# reveals absolute paths and prior prompts — never publish it.
+.claude/
+
+# ─── OS / shell ────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig

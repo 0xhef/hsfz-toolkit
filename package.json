@@ -1,0 +1,36 @@
+{
+  "name": "hsfz-toolkit",
+  "version": "1.0.0",
+  "description": "hsfz-toolkit — independent security research toolkit for HSFZ/UDS diagnostic protocols. PCAP flash extraction, live capture, bounded calibration read, ECU simulator, and MITM proxy. See SCOPE.md.",
+  "type": "module",
+  "packageManager": "bun@1.1.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev --features libpcap",
+    "tauri:build": "tauri build --features libpcap && bun scripts/collect-release.mjs",
+    "tauri:android:build": "tauri android build && bun scripts/collect-release.mjs",
+    "release:collect": "bun scripts/collect-release.mjs"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.1.1",
+    "@tauri-apps/cli": "^2.9.4",
+    "@tsconfig/svelte": "^5.0.4",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "svelte": "^5.23.3",
+    "svelte-check": "^4.2.0",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.7"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/plugin-dialog": "^2.4.2",
+    "@tauri-apps/plugin-fs": "^2.4.4",
+    "@tauri-apps/plugin-process": "^2.3.1"
+  }
+}

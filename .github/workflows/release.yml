@@ -1,0 +1,359 @@
+# ──────────────────────────────────────────────────────────────────
+# Release workflow
+# ──────────────────────────────────────────────────────────────────
+#
+# Builds the app for every supported platform and publishes the
+# artifacts as a draft GitHub Release. Triggered by either:
+#
+#   * a git tag push matching `v*.*.*` (recommended path)
+#   * manual dispatch from the Actions tab
+#
+# Platforms:
+#   windows-x64      MSI installer + NSIS setup + portable exe
+#   linux-amd64      .deb + .AppImage + portable binary
+#   macos-universal  .dmg + .app bundle (unsigned; right-click → Open
+#                    on first launch)
+#   android          signed universal .apk + .aab
+#
+# Secrets this workflow reads (all optional):
+#   ANDROID_KEYSTORE_B64       base64-encoded .jks keystore for
+#                              signing release APKs. If unset, the
+#                              collect-release.mjs script will
+#                              generate a throwaway keystore — fine
+#                              for a first release, but every later
+#                              release will have a different signing
+#                              identity and Android will treat them
+#                              as different apps. Generate once with:
+#                                base64 -w0 .android/bmsec.jks | wl-copy
+#                              then paste into Settings → Secrets →
+#                              Actions → New repository secret.
+#   ANDROID_KEYSTORE_PASSWORD  password for the keystore above.
+#                              Defaults to `bmsec-sideload` (the
+#                              value hardcoded in collect-release.mjs)
+#                              if unset.
+#
+# Concurrency:
+#   Only one release workflow runs at a time per ref. In-progress
+#   runs are cancelled when a new tag is pushed for the same ref.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Attach artifacts to a GitHub Release (draft)'
+        type: boolean
+        default: true
+      tag:
+        description: 'Tag to attach the release to (workflow_dispatch only)'
+        type: string
+        default: ''
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  # Pin toolchain versions so builds are reproducible across runs.
+  RUST_TOOLCHAIN: stable
+  NODE_JAVA_VERSION: '17'
+  ANDROID_NDK_VERSION: '26.3.11579264'
+  ANDROID_BUILD_TOOLS: '34.0.0'
+  ANDROID_PLATFORM: 'android-34'
+
+jobs:
+  # ── Desktop: Windows, Linux, macOS ──────────────────────────────
+  build-desktop:
+    name: Build ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows-x64
+            artifact_glob: |
+              release/*.msi
+              release/*.exe
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            label: linux-amd64
+            artifact_glob: |
+              release/*.AppImage
+              release/*.deb
+          - os: macos-14
+            target: universal-apple-darwin
+            label: macos-universal
+            artifact_glob: |
+              release/*.dmg
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Linux system deps ─────────────────────────────────────
+      # Tauri 2 on Linux needs webkit2gtk and friends. `libpcap-dev`
+      # is required because we build with `--features libpcap` for
+      # the live Capture Flash tab.
+      - name: Install Linux system dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libpcap-dev \
+            patchelf \
+            file \
+            wget
+
+      # ── Rust toolchain ────────────────────────────────────────
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.target }}
+
+      # For the macOS universal build, Tauri's `universal-apple-darwin`
+      # pseudo-target needs BOTH sub-targets added to rustup so the
+      # `lipo`-assembled final binary can be produced.
+      - name: Install extra macOS targets
+        if: matrix.os == 'macos-14'
+        run: |
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.label }}
+
+      # ── JS toolchain ──────────────────────────────────────────
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile
+
+      # ── Tauri build ───────────────────────────────────────────
+      # `--features libpcap` pulls in the pcap crate so the Capture
+      # Flash tab is available on desktop builds. Android doesn't
+      # get this feature because the pcap crate is target-gated to
+      # non-Android in Cargo.toml.
+      - name: Build Tauri application
+        run: |
+          bun run tauri build --features libpcap --target ${{ matrix.target }}
+        env:
+          # Skip the tauri-action auto-update signing because we
+          # don't ship the built-in updater. If you ever enable it,
+          # add TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+          # as repo secrets.
+          TAURI_SIGNING_PRIVATE_KEY: ''
+
+      # ── Copy to ./release/ using the project's collect script ─
+      - name: Collect release artifacts
+        run: bun scripts/collect-release.mjs
+        shell: bash
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.label }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ── Android ─────────────────────────────────────────────────────
+  build-android:
+    name: Build android (universal APK + AAB)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.NODE_JAVA_VERSION }}
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+
+      # Install specific NDK, build-tools, and platform versions.
+      # Pinning versions keeps builds reproducible across GitHub
+      # runner image updates (which sometimes roll the preinstalled
+      # NDK underneath us).
+      - name: Install Android NDK + build-tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install \
+            "ndk;${ANDROID_NDK_VERSION}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
+            "platforms;${ANDROID_PLATFORM}" \
+            "platform-tools"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/${ANDROID_NDK_VERSION}" >> $GITHUB_ENV
+
+      - name: Install Rust toolchain + Android targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: >-
+            aarch64-linux-android
+            armv7-linux-androideabi
+            i686-linux-android
+            x86_64-linux-android
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: android
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile
+
+      # ── Signing keystore ──────────────────────────────────────
+      # If the ANDROID_KEYSTORE_B64 secret is set, decode it into
+      # `.android/bmsec.jks` so collect-release.mjs signs the APK
+      # with the project's persistent identity. If the secret is
+      # NOT set, the script auto-generates a throwaway keystore —
+      # fine for a dev build, but every such build will have a
+      # different signing cert and Android will refuse to install
+      # them as updates of each other.
+      - name: Restore Android signing keystore from secret
+        if: ${{ env.ANDROID_KEYSTORE_B64 != '' }}
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          mkdir -p .android
+          echo "$ANDROID_KEYSTORE_B64" | base64 -d > .android/bmsec.jks
+          echo "Restored keystore from ANDROID_KEYSTORE_B64 secret."
+
+      # Tauri's Android scaffold (src-tauri/gen/android) is gitignored
+      # because it contains generated Gradle + build artifacts. Every
+      # fresh checkout has to regenerate it before the first build.
+      - name: Initialise Tauri Android scaffold
+        run: bun run tauri android init
+
+      - name: Build Android APK + AAB
+        run: bun run tauri android build
+
+      - name: Collect and sign release APK
+        run: bun scripts/collect-release.mjs
+        env:
+          # If ANDROID_KEYSTORE_PASSWORD is set as a repo secret, use it;
+          # otherwise collect-release.mjs falls back to its built-in
+          # throwaway password (only meaningful when the workflow also
+          # auto-generated a fresh keystore for this run).
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: |
+            release/*.apk
+            release/*.aab
+          if-no-files-found: error
+          retention-days: 14
+
+  # ── Publish release ─────────────────────────────────────────────
+  #
+  # Downloads every artifact from every previous job, flattens the
+  # directory structure, and creates a draft GitHub Release with
+  # everything attached. Draft = you get to eyeball it and click
+  # Publish manually before it goes live.
+  #
+  # Runs only on a tag push (`refs/tags/v*`) OR on a manual
+  # workflow_dispatch where `publish: true` was selected.
+  publish:
+    name: Publish GitHub Release
+    needs:
+      - build-desktop
+      - build-android
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish == true)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout (for release notes generation)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts into one folder
+        run: |
+          mkdir -p final
+          find artifacts -type f \
+            \( -name '*.msi' -o -name '*.exe' \
+               -o -name '*.dmg' -o -name '*.AppImage' \
+               -o -name '*.deb' -o -name '*.apk' \
+               -o -name '*.aab' \) \
+            -exec cp -v {} final/ \;
+          echo "── Final release payload ──"
+          ls -lah final/
+
+      - name: Generate checksums
+        run: |
+          cd final
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # `draft: true` means artifacts land in a draft release,
+          # which isn't visible on the public releases page until
+          # you edit and click Publish. Flip to `false` if you want
+          # fully automatic publication on every tag push.
+          draft: true
+          prerelease: ${{ contains(github.ref, '-') }}
+          generate_release_notes: true
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          name: ${{ github.ref_name || inputs.tag }}
+          files: final/*
+          body: |
+            Automated build for `${{ github.ref_name || inputs.tag }}`.
+
+            **Desktop**
+            - Windows (x64): MSI installer and NSIS setup
+            - macOS (universal): unsigned DMG — first launch: right-click → Open
+            - Linux (amd64): AppImage + DEB
+
+            **Mobile**
+            - Android: signed universal APK + Play Store AAB
+
+            Verify downloads against `SHA256SUMS.txt`.
+
+            See [NOTICE](NOTICE), [SCOPE.md](SCOPE.md), [TRADEMARKS.md](TRADEMARKS.md),
+            and [DISCLAIMER.md](DISCLAIMER.md) before use.

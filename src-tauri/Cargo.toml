@@ -1,0 +1,90 @@
+[package]
+name = "bmsecresearch"
+version = "1.0.0"
+edition = "2021"
+description = "BMSecResearch — independent security research toolkit for HSFZ/UDS diagnostic protocols. PCAP flash extraction, live capture, bounded calibration read, ECU simulator, and MITM proxy. See SCOPE.md."
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+# Keep these pinned to the same minor as the JS-side `@tauri-apps/plugin-*`
+# packages in `package.json`. Tauri's build refuses to start if a Rust
+# crate and its JS peer are on different minor versions.
+tauri-plugin-process = "2.3"
+tauri-plugin-dialog = "2.7"
+tauri-plugin-fs = "2.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.11"
+rand = "0.8"
+
+# libpcap binding — target-gated so it is only declared on non-Android
+# targets. The android NDK sysroot has no libpcap.so, so including pcap
+# in deps on android causes a link failure. The `libpcap` feature below
+# is a no-op on android (the pcap-using code is cfg-gated too).
+[target.'cfg(not(target_os = "android"))'.dependencies]
+pcap = { version = "2.2", optional = true }
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[features]
+# Default features (desktop builds): everything compiled in.
+default = ["custom-protocol", "live-ecu"]
+custom-protocol = ["tauri/custom-protocol"]
+# Enable devtools only for development builds: `cargo build --features devtools`
+devtools = ["tauri/devtools"]
+# Live-ECU networking: the calibration reader, HSFZ vehicle discovery,
+# and clone-from-car. When this feature is off, all three commands
+# return a clear error without touching the network. The simulator,
+# pcap forensics, and proxy remain fully functional.
+live-ecu = []
+# libpcap-based passive sniffing for the live `Capture Flash` tab.
+# Requires libpcap (Linux/macOS) or Npcap (Windows) at runtime, plus
+# the system headers at build time. Available on desktop by default.
+# Android: omitted from the default bundle because libpcap isn't part
+# of the NDK. Rooted-Android users with a cross-compiled libpcap can
+# re-enable it via `--features libpcap`. See ANDROID.md.
+libpcap = ["dep:pcap"]
+# Research-only bundle: protocol research + simulator + proxy + pcap
+# forensics, but no live-ECU networking and no libpcap sniffing. Use
+# with `--no-default-features` to produce a binary that cannot talk to
+# real cars and cannot sniff network traffic.
+research = ["custom-protocol"]
+# Standard Android sideload bundle: everything except libpcap. The
+# Capture Flash tab is hidden in the UI; capture is done via the Proxy
+# tab instead (userspace forwarding, works on all platforms).
+android-default = ["custom-protocol", "live-ecu"]
+
+# Release-profile hardening for distributed binaries.
+# - `strip = "symbols"`  removes debug symbols and Rust-injected file
+#   paths from the compiled artifact, dramatically shrinks the binary,
+#   and removes the most common anonymity-leak vector (build-host
+#   paths in panic strings).
+# - `lto = "thin"`       enables thin LTO for ~10-20% smaller binaries
+#   without the long compile times of full LTO.
+# - `codegen-units = 1`  trades parallel codegen for slightly better
+#   optimisation. Release builds aren't iterative so this is fine.
+# - `panic = "abort"`    smaller binary, no unwinding tables. Tauri
+#   apps don't use panic-recovery anyway.
+[profile.release]
+strip = "symbols"
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+opt-level = 3
+
+# Library crate — produces a `cdylib` for the Tauri Android build
+# (which packages it into the APK as a JNI-loaded shared object) and
+# an `rlib` for the desktop binary to link against. The lib name
+# differs from the bin name to avoid the Cargo "package and target
+# share a name" warning.
+[lib]
+name = "bmsecresearch_lib"
+path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "bmsecresearch"
+path = "src/main.rs"

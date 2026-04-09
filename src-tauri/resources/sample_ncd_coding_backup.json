@@ -1,0 +1,37 @@
+{
+  "dids": [
+    {
+      "did": "3300",
+      "data": "ffffffffffffffffffffffffffffffff"
+    },
+    {
+      "did": "3350",
+      "data": "ffffffffffffffffffffffffffffffff"
+    },
+    {
+      "did": "37FE",
+      "data": "ffffffffffffffffffffffffffffffff"
+    },
+    {
+      "did": "3320",
+      "data": "ffffffffffffffffffffffffffffffff"
+    },
+    {
+      "did": "3351",
+      "data": "ffffffffffffffffffffffffffffffff"
+    }
+  ],
+  "ecu_address": 18,
+  "read_count": 5,
+  "error_count": 0,
+  "metadata": {
+    "vin": "WBATESTVIN1234567",
+    "ecu_address": 18,
+    "ecu_type": "Mevd17",
+    "btld_sgbm": null,
+    "cafd_sgbm": null,
+    "coding_version": null,
+    "created_at": "2020-01-01T00:00:00.000000000+00:00",
+    "app_version": "0.1.0"
+  }
+}

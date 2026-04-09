@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash background shown while the Android Activity is starting and
+  the Tauri WebView is still loading its JS/CSS bundle. Two layers:
+    1. Solid dark brand colour (same as ic_launcher_background so the
+       splash, adaptive icon, and main app chrome are all the same
+       tone — the transition into the running app is invisible).
+    2. The launcher foreground mark, centred and scaled slightly
+       smaller than the full adaptive icon safe zone so it reads
+       clearly on phones with notches and rounded corners.
+
+  No JS-side dismissal is required — Android shows this drawable as
+  the Activity's windowBackground until the WebView draws its first
+  frame, at which point the WebView content covers it.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item android:gravity="center">
+        <bitmap
+            android:src="@mipmap/ic_launcher_foreground"
+            android:gravity="center" />
+    </item>
+</layer-list>

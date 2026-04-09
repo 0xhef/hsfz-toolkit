@@ -1,0 +1,73 @@
+NOTICE
+
+BMSecResearch
+Copyright (c) BMSecResearch contributors.
+Licensed under the terms in LICENSE.
+
+This project is an independent open-source security research toolkit.
+It is not affiliated with, endorsed by, sponsored by, or commercially
+connected to any vehicle manufacturer, electronic control unit
+supplier, diagnostic tool vendor, or parts manufacturer. See
+TRADEMARKS.md for the nominative fair use framework under which
+third-party trademarks are referenced in this project.
+
+────────────────────────────────────────────────────────────────────
+NO COPIED PROPRIETARY CODE OR DATA
+────────────────────────────────────────────────────────────────────
+
+This repository contains no proprietary third-party material. In
+particular, the following categories of material are NOT included
+in this repository and have not been used in its authorship:
+
+  * Vehicle manufacturer firmware images (ECU flash binaries,
+    bootloader images, calibration maps, partition tables, etc.)
+  * Decompiled or disassembled output of any vehicle manufacturer
+    software or firmware
+  * Cryptographic material (signing keys, session seeds,
+    certificates, private keys, authentication secrets)
+  * Commercial diagnostic software (ISTA, E-Sys, WinKFP, INPA,
+    ESYSX, ICOM firmware, or any variant) — neither bundled,
+    mirrored, nor extracted
+  * Third-party tuning software, maps, tables, or calibration data
+  * Copyrighted protocol documentation from any OEM, Tier 1
+    supplier, or standards body beyond what is publicly available
+    under open-access terms
+  * Any data obtained through unauthorized access to any system
+
+All protocol knowledge encoded in this project was derived from:
+
+  * Public standards documents (ISO 14229 UDS, ISO 13400 DoIP,
+    ISO 15765 ISO-TP, ISO 3779 VIN structure)
+  * Publicly published academic security research (conference
+    papers, journal articles, thesis work)
+  * Publicly available open-source protocol dissectors (notably
+    Scapy's automotive contribs and Wireshark's HSFZ dissector)
+  * Observation of the author's own vehicles on private bench
+    networks, documented under the authorized-use terms in
+    DISCLAIMER.md and SCOPE.md
+
+────────────────────────────────────────────────────────────────────
+OPEN-SOURCE DEPENDENCIES
+────────────────────────────────────────────────────────────────────
+
+This project depends on third-party open-source libraries. Their
+licenses are preserved in the dependency trees of Cargo and the Node
+package manager. See `src-tauri/Cargo.lock` and `bun.lock` for the
+full dependency manifest, and `node_modules/*/LICENSE` / the Rust
+crates.io pages for the individual license texts.
+
+────────────────────────────────────────────────────────────────────
+DMCA / TAKEDOWN
+────────────────────────────────────────────────────────────────────
+
+If you are a rights-holder and believe that this repository contains
+material that infringes your rights, please follow GitHub's DMCA
+takedown process at https://docs.github.com/en/site-policy/content-
+removal-policies/dmca-takedown-policy or open an issue on the
+repository describing the specific file(s) and the specific concern.
+
+We will evaluate all notices in good faith and respond promptly.
+Note that this project's use of third-party trademarks is
+deliberately limited to nominative fair use, and its scope is
+intentionally constrained to avoid anti-circumvention issues — see
+TRADEMARKS.md and SCOPE.md for the full analysis.
