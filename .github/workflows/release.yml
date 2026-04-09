@@ -118,15 +118,26 @@ jobs:
             wget
 
       # ── Rust toolchain ────────────────────────────────────────
-      - name: Install Rust toolchain
+      # `universal-apple-darwin` is a Tauri pseudo-target, not a real
+      # rustup target, so on macOS we install the toolchain without a
+      # target and add both real sub-targets in the next step. On
+      # Windows and Linux we install the real target directly.
+      - name: Install Rust toolchain (non-macOS)
+        if: matrix.os != 'macos-14'
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.target }}
 
+      - name: Install Rust toolchain (macOS)
+        if: matrix.os == 'macos-14'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+
       # For the macOS universal build, Tauri's `universal-apple-darwin`
-      # pseudo-target needs BOTH sub-targets added to rustup so the
-      # `lipo`-assembled final binary can be produced.
+      # pseudo-target needs BOTH real sub-targets added to rustup so
+      # the `lipo`-assembled final binary can be produced.
       - name: Install extra macOS targets
         if: matrix.os == 'macos-14'
         run: |
@@ -138,6 +149,22 @@ jobs:
         with:
           workspaces: src-tauri -> target
           key: ${{ matrix.label }}
+
+      # ── Windows: Npcap SDK ────────────────────────────────────
+      # The `pcap` crate links against wpcap.lib, which ships in the
+      # Npcap SDK (not in the regular Windows SDK). Download it and
+      # expose its x64 lib directory via the LIB env var so rustc's
+      # linker can find wpcap.lib at build time. End users still need
+      # the Npcap runtime installed to actually run the binary.
+      - name: Install Npcap SDK (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $url = 'https://npcap.com/dist/npcap-sdk-1.13.zip'
+          Invoke-WebRequest -Uri $url -OutFile npcap-sdk.zip
+          Expand-Archive -Path npcap-sdk.zip -DestinationPath npcap-sdk
+          $libDir = (Resolve-Path 'npcap-sdk\Lib\x64').Path
+          echo "LIB=$libDir;$env:LIB" >> $env:GITHUB_ENV
 
       # ── JS toolchain ──────────────────────────────────────────
       - name: Install Bun
